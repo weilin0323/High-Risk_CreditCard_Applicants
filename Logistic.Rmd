@@ -1,0 +1,113 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r echo=T, message=F, cache=F, warning=F}
+rm(list=ls(all=TRUE))
+pacman::p_load(latex2exp,lubridate,Matrix,dplyr,tidyr,ggplot2,caTools,plotly,ggrepel,gridExtra,openxlsx,gganimate,ROSE)
+```
+
+#檔案讀取
+```{r}
+Application<-read.csv("C:/Users/Administrator/Desktop/BI/Application_v4.csv")
+
+```
+
+
+```{r}
+Application$Gender<-as.factor(Application$Gender)
+Application$Own_car<-as.factor(Application$Own_car)
+Application$Own_property<-as.factor(Application$Own_property)
+Application$Work_phone<-as.factor(Application$Work_phone)
+Application$Phone<-as.factor(Application$Phone)
+Application$Email<-as.factor(Application$Email)
+Application$Unemployed<-as.factor(Application$Unemployed)
+Application$Target<-as.factor(Application$Target)
+
+```
+
+
+
+```{r}
+set.seed(88)
+split = sample.split(Application$Target, SplitRatio = 0.7)  # split vector
+table(split) %>% prop.table()
+```
+
+```{r}
+#使用分割向量分割資料
+TR = subset(Application, split == TRUE)
+TS = subset(Application, split == FALSE)
+```
+
+
+```{r}
+# Unemployed & Years_employed
+#Unemployed_Years & Years_employed
+glm1 = glm(Target ~ Gender+Own_car+Own_property+Work_phone+Phone+Email+Unemployed+Num_children+Num_family+Account_length+Total_income+Age+Years_employed+Income_type+Family_status+Housing_type+Occupation_type+E_score,TR, family=binomial)
+
+summary(glm1)
+
+step(glm1)
+```
+
+```{r}
+glm2 = glm(Target ~ Own_property + Unemployed + Num_children + Num_family + 
+    Account_length + Age + Income_type + Family_status,TR, family=binomial)
+summary(glm2)
+```
+
+###traning data
+```{r}
+par(cex=0.8)
+pred = predict(glm2, newdata=TR,type="response")
+hist(pred)
+abline(v=0.5, col='red')
+```
+
+```{r}
+cmx = table(Acture=TR$Target, Predict=pred > 0.5)
+cmx
+```
+
+###testing data
+```{r}
+par(cex=0.8)
+pred2 = predict(glm2, newdata=TS, type="response")
+hist(pred2, 10)
+abline(v=0.5, col='red')
+```
+
+```{r}
+cmx2 = table(Acture=TS$Target, Predict=pred2 > 0.5)
+cmx2
+```
+
+#準確性指標
+```{r}
+AccuracyMetrices = function(x, k=3) c(
+  accuracy = sum(diag(x))/sum(x),                    # 正確性
+  recall = as.numeric(x[2,2]/rowSums(x)[2]),    
+  precision = as.numeric(x[2,2]/colSums(x)[2]),
+  #F1 Score = 2 * (Precision * Recall) / (Precision + Recall)
+  f1score = (2 * (as.numeric(x[2,2]/colSums(x)[2]) * as.numeric(x[2,2]/rowSums(x)[2])) )/ (as.numeric(x[2,2]/colSums(x)[2]) + as.numeric(x[2,2]/rowSums(x)[2]))
+  ) %>% round(k)
+
+```
+
+```{r}
+sapply(list(Train=cmx, Test=cmx2), AccuracyMetrices)
+```
+
+```{r}
+colAUC(pred2, y=TS$Target)
+```
+
+
+```{r}
+par(mfrow=c(1,2), cex=0.8)
+trAUC = colAUC(pred, y=TR$Target, plotROC=T)
+tsAUC = colAUC(pred2, y=TS$Target, plotROC=T)
+```
+

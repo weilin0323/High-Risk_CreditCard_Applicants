@@ -1,0 +1,103 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r echo=T, message=F, cache=F, warning=F}
+rm(list=ls(all=TRUE))
+pacman::p_load(latex2exp,lubridate,Matrix,dplyr,tidyr,ggplot2,caTools,plotly,ggrepel,gridExtra,openxlsx,gganimate,car, vcd, GGally, mvtnorm,xgboost,readr,stringr)
+```
+
+
+#檔案讀取
+```{r}
+Application<-read.csv("C:/Users/Administrator/Desktop/BI/Application_v4.csv")
+
+```
+
+```{r}
+Application<-Application %>% select(ID,Gender,Own_car,Own_property,Work_phone,Phone,Email,Unemployed,Num_children,Num_family,Account_length,Total_income,Age,Years_employed,Income_type,Family_status,Housing_type,Occupation_type,E_score,Target )
+```
+
+
+```{r}
+set.seed(88)
+split = sample.split(Application$Target, SplitRatio = 0.7)  # split vector
+table(split) %>% prop.table()
+```
+
+```{r}
+#使用分割向量分割資料
+TR = subset(Application, split == TRUE)
+TS = subset(Application, split == FALSE)
+```
+
+```{r}
+library(Matrix)
+####訓練集的數據預處理
+
+# 將自變量轉化為矩陣
+traindata1 <- data.matrix(TR[,c(2:19)]) 
+# 利用Matrix函數，將sparse參數設置為TRUE，轉化為稀疏矩陣
+traindata2 <- Matrix(traindata1,sparse=T) 
+traindata3 <- TR[,20]
+# 將自變量和應變量拼接為list
+traindata4 <- list(data=traindata2,label=traindata3) 
+# 構造模型需要的xgb.DMatrix，處理對象為稀疏矩陣
+dtrain <- xgb.DMatrix(data = traindata4$data, label = traindata4$label) 
+
+#test
+# 將自變量轉化為矩陣
+testdata1 <- data.matrix(TS[,c(2:19)]) 
+# 利用Matrix函數，將sparse參數設置為TRUE，轉化為稀疏矩陣
+testdata2 <- Matrix(testdata1,sparse=T) 
+testdata3 <- TS[,20]
+# 將自變量和應變量拼接為list
+testdata4 <- list(data=testdata2,label=testdata3) 
+# 構造模型需要的xgb.DMatrix，處理對象為稀疏矩陣
+dtest <- xgb.DMatrix(data = testdata4$data, label = testdata4$label)
+```
+
+```{r}
+xgb <- xgboost(data = dtrain,max_depth=6, eta=0.5,  objective='binary:logistic', nround=25)
+```
+
+```{r}
+#https://blog.csdn.net/weixin_43216017/article/details/87905163
+#在測試集上預測
+pre_xgb = round(predict(xgb,newdata = dtest))
+
+
+cmx2 = table(TS$Target,pre_xgb,dnn=c("真實值","預測值"))
+cmx2
+#xgboost_roc <- roc(TR$Target,as.numeric(pre_xgb))
+
+colAUC(pre_xgb, TS$Target)
+AUC = colAUC(pre_xgb, y=TS$Target, plotROC=T)
+```
+
+#準確性指標
+```{r}
+AccuracyMetrices = function(x, k=3) c(
+  accuracy = sum(diag(x))/sum(x),                    # 正確性
+  recall = as.numeric(x[2,2]/rowSums(x)[2]),    
+  precision = as.numeric(x[2,2]/colSums(x)[2]),
+  #F1 noscore = 2 * (Precision * Recall) / (Precision + Recall)
+  f1noscore = (2 * (as.numeric(x[2,2]/colSums(x)[2]) * as.numeric(x[2,2]/rowSums(x)[2])) )/ (as.numeric(x[2,2]/colSums(x)[2]) + as.numeric(x[2,2]/rowSums(x)[2]))
+  ) %>% round(k)
+
+```
+
+```{r}
+sapply(list(Test=cmx2), AccuracyMetrices)
+```
+
+
+```{r}
+importance_matrix <- xgb.importance(colnames(dtest), model = xgb)
+
+xgb.plot.importance(importance_matrix, rel_to_first = TRUE, xlab = "Relative importance")
+
+```
+
+
+

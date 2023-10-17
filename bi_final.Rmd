@@ -1,0 +1,128 @@
+---
+title: "datatest"
+output: html_document
+   
+---
+
+```{r echo=T, message=F, cache=F, warning=F}
+rm(list=ls(all=TRUE))
+pacman::p_load(latex2exp,lubridate,Matrix,dplyr,tidyr,ggplot2,caTools,plotly,ggrepel,gridExtra,openxlsx,gganimate)
+```
+
+#檔案讀取
+```{r}
+#C:\Users\Administrator\Desktop\中山\碩一上\Rclass\week5\unit05
+app<-read.csv("C:/Users/Administrator/Desktop/BI/clean_data.csv")
+#app<- Application %>% select(Unemployed,Num_children,Num_family,Account_length,Total_income,Years_employed,Age,Target)
+```
+
+```{r}
+summary(app)
+```
+
+
+###Unemployed
+```{r}
+app$Target<-as.factor(app$Target)
+app$Unemployed<-as.factor(app$Unemployed)
+ggplot(app, aes(x=Unemployed, fill=Target)) + geom_bar()
+group_by(app,Unemployed,Target) %>% summarise(n=n()) %>% ggplot(aes(x=Unemployed,y=n, fill=Target)) + geom_col(position="fill")
+#沒失業的人為高風險的機率比較高
+```
+
+
+###Num_children
+```{r}
+app$Num_children<-as.factor(app$Num_children)
+group_by(app,Num_children,Target) %>% 
+   summarise(n=n()) %>%
+ggplot(aes(x=Target,y=n, fill=Num_children)) + geom_col(position="dodge")
+
+group_by(app,Num_children,Target) %>% summarise(n=n()) %>% ggplot(aes(x=Num_children,y=n, fill=Target)) + geom_col(position="fill")
+#小孩數量為7的家庭很容易為高風險族群
+```
+
+
+```{r}
+app$Num_children<-as.integer(app$Num_children)
+```
+
+
+
+###Num_family
+```{r}
+app$Num_family<-as.factor(app$Num_family)
+group_by(app,Num_family,Target) %>% 
+   summarise(n=n()) %>%
+ggplot(aes(x=Target,y=n, fill=Num_family)) + geom_col(position="dodge")
+
+group_by(app,Num_family,Target) %>% summarise(n=n()) %>% ggplot(aes(x=Num_family,y=n, fill=Target)) + geom_col(position="fill")
+#家庭人數為9的家庭很容易為高風險族群
+```
+
+```{r}
+app$Num_family<-as.integer(app$Num_family)
+```
+
+###Account_length有信用卡的月數
+```{r}
+g2=filter(app,Target==1) %>% ggplot(aes(x=Account_length)) + geom_histogram(binwidth=10)+ labs(title=1,y="")
+
+g1=filter(app,Target==0) %>% ggplot(aes(x=Account_length)) + geom_histogram(binwidth=10)+ labs(title=0,y="")
+
+grid.arrange(g1,g2,nrow=1)
+#風險高的族群有信用卡的月數較久
+```
+
+
+###Total_income
+```{r}
+filter(app,Target==0)%>%summary()
+filter(app,Target==1)%>%summary()
+#高風險族群平均收入較高
+```
+###age
+```{r}
+app$Age2<-as.factor(as.integer(app$Age))
+group_by(app,Age2,Target) %>% 
+   summarise(n=n()) %>%
+ggplot(aes(x=Target,y=n, fill=Age2)) + geom_col(position="dodge")
+
+```
+
+```{r}
+filter(app,Target==0)%>%summary()
+filter(app,Target==1)%>%summary()
+#高風險族群較年輕
+```
+
+```{r}
+#https://blog.gtwang.org/r/r-data-exploration-and-visualization/7/
+```
+
+```{r}
+pie <- ggplot(app, aes(x = factor(1), fill = factor(Target))) + geom_bar(width = 1)
+pie <- pie + coord_polar(theta = "y")
+#pie <- pie + theme_void()
+pie
+```
+
+```{r}
+# Plot the chart.
+#boxplot(Num_children ~ Target, data = app, xlab = "",ylab = "每加侖里程", main = "里程數據")
+
+boxplot(app$Num_children,app$Num_family)$out # 或使用boxplot()$out函式看有哪些離群值
+boxplot(app$Account_length,app$Age)$out
+boxplot(app$Total_income)$out
+```
+
+```{r}
+ggplot(app, aes(x = Target, y = app$Years_employed, fill = Target)) + geom_boxplot(width = .5) 
+
+```
+
+```{r}
+app %>% group_by(Target) %>% summarize(m=mean(Years_employed))%>% ggplot(aes(x=Target,y=m, fill=Target)) + geom_col(position="dodge")
+```
+
+

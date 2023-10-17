@@ -1,0 +1,223 @@
+---
+title: "bi"
+author: ""
+date: '2022-05-21'
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(caret)
+```
+
+```{r}
+library(devtools)
+library(stringi)
+library(ggplot2)
+#install.packages("e1071")
+library(e1071)
+library(dplyr) 
+
+data <- read.csv("clean_data.csv")
+#view(pres)
+summary(data)
+```
+
+## Gender
+```{r}
+data$Target<-as.factor(data$Target)
+data$Gender<-as.factor(data$Gender)
+ggplot(data, aes(x=Gender, fill=Target)) + geom_bar()
+group_by(data,Gender,Target) %>% summarise(n=n()) %>% 
+    ggplot(aes(x=Gender,y=n, fill=Target)) + geom_col(position="fill")
+```
+
+## Own_car
+```{r}
+data$Target<-as.factor(data$Target)
+data$Own_car<-as.factor(data$Own_car)
+ggplot(data, aes(x=Own_car, fill=Target)) + geom_bar()
+group_by(data,Own_car,Target) %>% summarise(n=n()) %>% 
+    ggplot(aes(x=Own_car,y=n, fill=Target)) + geom_col(position="fill")
+```
+
+## Own_property
+```{r}
+data$Target<-as.factor(data$Target)
+data$Own_property<-as.factor(data$Own_property)
+ggplot(data, aes(x=Own_property, fill=Target)) + geom_bar()
+group_by(data,Own_property,Target) %>% summarise(n=n()) %>%           
+    ggplot(aes(x=Own_property,y=n, fill=Target)) + geom_col(position="fill")
+```
+
+## Work_phone
+```{r}
+data$Target<-as.factor(data$Target)
+data$Work_phone<-as.factor(data$Work_phone)
+ggplot(data, aes(x=Work_phone, fill=Target)) + geom_bar()
+group_by(data,Work_phone,Target) %>% summarise(n=n()) %>% 
+    ggplot(aes(x=Work_phone,y=n, fill=Target)) + geom_col(position="fill")
+```
+
+## Phone
+```{r}
+data$Target<-as.factor(data$Target)
+data$Phone<-as.factor(data$Phone)
+ggplot(data, aes(x=Phone, fill=Target)) + geom_bar()
+group_by(data,Phone,Target) %>% summarise(n=n()) %>% 
+    ggplot(aes(x=Phone,y=n, fill=Target)) + geom_col(position="fill")
+```
+
+## Email
+```{r}
+data$Target<-as.factor(data$Target)
+data$Email<-as.factor(data$Email)
+ggplot(data, aes(x=Email, fill=Target)) + geom_bar()
+group_by(data,Email,Target) %>% summarise(n=n()) %>% 
+    ggplot(aes(x=Email,y=n, fill=Target)) + geom_col(position="fill")
+```
+
+
+```{r}
+bi <- data%>% select(Gender,Own_car,Own_property,Work_phone,Phone,Email,Unemployed,Num_children,Num_family,Account_length,Total_income,Age,Years_employed,Income_type,Education_type,Family_status,Housing_type,Occupation_type,Target)
+```
+
+
+```{r}
+head(bi)
+```
+
+
+```{r}
+bi$Target = as.factor(bi$Target)
+
+set.seed(88)
+dat.d <- sample(1:nrow(bi),size=nrow(bi)*0.7,replace = FALSE)
+train = bi[dat.d,]
+test = bi[-dat.d,]
+train
+test
+
+```
+```{r}
+#Creating seperate dataframe for 'Target' feature which is our target.
+train.bi_labels <- bi[dat.d,19]
+test.bi_labels <- bi[-dat.d,19]
+```
+
+```{r}
+dim(train) #列數＆行數
+dim(test)
+```
+
+```{r}
+head(train)
+```
+
+```{r}
+head(test)
+```
+
+```{r}
+levels(train$Target) <- make.names(levels(factor(train$Target)))
+levels(test$Target) <- make.names(levels(factor(test$Target)))
+
+
+repeats = 3
+numbers = 10
+tunel = 10
+
+set.seed(88)
+x = trainControl(method = 'repeatedcv',number = numbers,repeats = repeats,classProbs = TRUE,
+                 summaryFunction = twoClassSummary)
+
+
+model1 <- train(Target~. , data = train, method = 'knn',
+                preProcess = c('center','scale'),
+                trControl = x,
+                metric = 'ROC',
+                tuneLength = tunel)
+model1
+```
+
+```{r}
+plot(model1)
+```
+
+
+```{r}
+levels(train$Target) <- make.names(levels(factor(train$Target)))
+levels(test$Target) <- make.names(levels(factor(test$Target)))
+
+
+repeats = 3
+numbers = 10
+tunel = 10
+
+set.seed(88)
+x = trainControl(method = 'repeatedcv',number = numbers,repeats = repeats,classProbs = TRUE,
+                 summaryFunction = twoClassSummary)
+
+
+model2 <- train(Target~. , data = test, method = 'knn',
+                preProcess = c('center','scale'),
+                trControl = x,
+                metric = 'ROC',
+                tuneLength = tunel)
+model2
+```
+
+```{r}
+knnPredict <- predict(model2,test)
+```
+
+```{r}
+confusionMatrix(knnPredict, test$Target, mode = "everything" )
+```
+
+```{r}
+plot(model2)
+```
+
+
+```{r}
+# Validation
+valid_pred <- predict(model1,test, type = 'prob')
+
+#Storing Model Performance Scores
+#install.packages("ROCR")
+library(ROCR)
+```
+
+```{r}
+pred_val <-prediction(valid_pred[,2],test$Target)
+
+# Calculating Area under Curve (AUC)
+perf_val <- performance(pred_val,'auc')
+perf_val
+```
+
+```{r}
+# Plot AUC
+perf_val <- performance(pred_val, 'tpr', 'fpr')
+plot(perf_val, col = 'green', lwd = 1.5)
+```
+
+```{r}
+ks <- 100 * max(attr(perf_val,'y.values')[[1]] - (attr(perf_val,'x.values'))[[1]])
+ks
+```
+
+
+
+
+
