@@ -1,7 +1,7 @@
 # High-Risk_CreditCard_Applicants
 
 使用資料集：https://www.kaggle.com/datasets/samuelcortinhas/credit-card-classification-clean-data <br/>
-詳細內容請參考附件ppt <br/>
+詳細內容請參考附件pdf <br/>
 
 ## 研究目的
 透過客戶資料了解銀行在審核信用卡申請時，會因為那些條件的不同，進而將申請人評估為有風險的族群。
@@ -11,7 +11,7 @@ Credit Card Classification  <br/>
 <img width="600" alt="" src="https://github.com/weilin0323/High-Risk_CreditCard_Applicants/assets/51693471/456afaa7-7148-4374-b071-282838267fb2">
 
 ## 資料探索
-詳細內容請參考附件ppt
+詳細內容請參考附件pdf
 
 ## 模型預測
 
